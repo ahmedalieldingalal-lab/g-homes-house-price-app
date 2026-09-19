@@ -1,0 +1,34 @@
+{
+  "0": {
+    "count": 1829,
+    "mean_age": 28.664297430289775,
+    "mean_sqft": 2129.8201202843084,
+    "name": "Untouched Classics",
+    "premium_outlook_mean": 0.10060142154182614,
+    "renovated_rate": 0.0
+  },
+  "1": {
+    "count": 763,
+    "mean_age": 62.58584534731324,
+    "mean_sqft": 2250.8440366972477,
+    "name": "Refreshed & Finished Below",
+    "premium_outlook_mean": 0.4456094364351245,
+    "renovated_rate": 1.0
+  },
+  "2": {
+    "count": 1070,
+    "mean_age": 41.82429906542056,
+    "mean_sqft": 2450.9383177570094,
+    "name": "Untouched, Finished Below",
+    "premium_outlook_mean": 0.4102803738317757,
+    "renovated_rate": 0.0
+  },
+  "3": {
+    "count": 887,
+    "mean_age": 58.222096956031564,
+    "mean_sqft": 1647.3652762119505,
+    "name": "Refreshed Classics",
+    "premium_outlook_mean": 0.12175873731679819,
+    "renovated_rate": 1.0
+  }
+}

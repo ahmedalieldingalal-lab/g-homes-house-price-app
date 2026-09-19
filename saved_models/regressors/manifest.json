@@ -1,0 +1,120 @@
+{
+  "created": "2026-09-03T22:36:31.632563",
+  "note": "Top-3 regressors only (by CV RMSE, log scale) copied here for deployment consistency with Model A/B (saved_models/ is the single deployment-artifact directory per audit finding C2). All 13 tuned regressors, the full comparison table, and the written report remain in regression_output/ (models/, manifest.json, regression_report.md) -- that is the model-SELECTION record, this is the model-DEPLOYMENT shortlist. Written automatically by copy_deployment_shortlist() at the end of every regression_pipeline.py run (dual-audit fix pass 2026-09-03, finding D9) -- previously this file was hand-maintained and could silently go stale; check_consistency.py's cross-manifest agreement check is now a tautology rather than a tripwire.",
+  "feature_order": [
+    "bedrooms",
+    "bathrooms",
+    "floors",
+    "waterfront",
+    "view",
+    "condition",
+    "sqft_living",
+    "sqft_lot",
+    "sqft_above",
+    "sqft_basement",
+    "yr_built",
+    "yr_renovated",
+    "house_age",
+    "was_renovated",
+    "total_rooms",
+    "years_since_renovation",
+    "renovation_recency_ratio",
+    "has_basement",
+    "basement_ratio",
+    "lot_utilization",
+    "bath_bed_ratio",
+    "avg_room_size",
+    "premium_outlook_score",
+    "condition_x_age",
+    "log_sqft_lot",
+    "sale_month",
+    "sale_month_sin",
+    "sale_month_cos",
+    "city_sale_volume_safe",
+    "zip_sale_volume_safe",
+    "location_price_per_sqft",
+    "age_bucket_100y+",
+    "age_bucket_11-25y",
+    "age_bucket_26-50y",
+    "age_bucket_51-100y"
+  ],
+  "n_features": 35,
+  "training_row_count": 3641,
+  "target": "log1p(price); back-transform predictions with np.expm1()",
+  "sklearn_version": "1.8.0",
+  "lightgbm_version": "4.7.0",
+  "xgboost_version": "3.2.0",
+  "top3_models": {
+    "Gradient Boosting (GBM)": {
+      "rank": 1,
+      "file": "regressors/gradient_boosting_gbm.joblib",
+      "tuner": "Optuna (60 trials)",
+      "best_params": {
+        "n_estimators": 550,
+        "learning_rate": 0.026015340823782415,
+        "max_depth": 3,
+        "subsample": 0.5545583123122451,
+        "loss": "huber"
+      },
+      "cv_rmse_log": 0.2491419266784621,
+      "test_r2_dollar": 0.3557,
+      "test_mape_pct": 14.73,
+      "fit_diagnosis": "Good fit"
+    },
+    "RBF SVR (soft-margin)": {
+      "rank": 2,
+      "file": "regressors/rbf_svr_soft_margin.joblib",
+      "tuner": "Optuna (60 trials)",
+      "best_params": {
+        "C": 2.7613286939198156,
+        "epsilon": 0.06940667301391201,
+        "gamma": 0.006939561973455865
+      },
+      "cv_rmse_log": 0.24950332928722524,
+      "test_r2_dollar": 0.3458,
+      "test_mape_pct": 15.17,
+      "fit_diagnosis": "Good fit"
+    },
+    "LightGBM": {
+      "rank": 3,
+      "file": "regressors/lightgbm.joblib",
+      "tuner": "Optuna (20 trials)",
+      "best_params": {
+        "num_leaves": 24,
+        "max_depth": 5,
+        "learning_rate": 0.02240870575939826,
+        "n_estimators": 350,
+        "min_data_in_leaf": 41,
+        "feature_fraction": 0.5998368910791798,
+        "bagging_fraction": 0.7571172192068059
+      },
+      "cv_rmse_log": 0.25376782154837635,
+      "test_r2_dollar": 0.3494,
+      "test_mape_pct": 15.03,
+      "fit_diagnosis": "Mild overfitting"
+    }
+  },
+  "conformal_interval": {
+    "note": "3 CQR models (point/quantile-lo/quantile-hi GBMs) behind the shipped 90% interval; full manifest in regression_output/conformal_manifest.json",
+    "method": "cross_conformal_pooled_oof",
+    "alpha": 0.1,
+    "files": {
+      "point_model": "regressors/conformal_cqr/point_gbm.joblib",
+      "quantile_lo_model": "regressors/conformal_cqr/quantile_lo_gbm.joblib",
+      "quantile_hi_model": "regressors/conformal_cqr/quantile_hi_gbm.joblib"
+    },
+    "cutpoints_dollar": [
+      377943.3691417618,
+      573812.51723246
+    ],
+    "q_hat_by_band": {
+      "low": 0.03525725712945338,
+      "mid": 0.03293000662902301,
+      "high": 0.05303509822653396
+    },
+    "overall_coverage_pct": 90.63876651982379
+  },
+  "full_comparison_table": "../regression_output/regression_comparison_table.csv",
+  "full_report": "../regression_output/regression_report.md",
+  "conformal_manifest": "../regression_output/conformal_manifest.json"
+}
