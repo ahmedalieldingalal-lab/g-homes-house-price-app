@@ -34,6 +34,7 @@ the variable simply re-enables the LLM prose layer on top:
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -73,6 +74,21 @@ REPO_ROOT = Path(__file__).resolve().parent
 ENRICHED_DATASET_PATH = REPO_ROOT / "consolidated_output" / "enriched_dataset.csv"
 PLOTS_DIR = REPO_ROOT / "app_plots"
 
+# PACKAGING_TODO.md, post-delivery Amendment 1 (2026-09-20): the hero
+# banner's photos and the brand fonts used to be hotlinked from
+# images.pexels.com / fonts.googleapis.com -- both real, working features
+# (verified rendering fine when reachable), but a live external dependency
+# on first paint, which showed as a slow/blank banner on a first-time or
+# slow connection (the trigger for this amendment). Bundled locally here
+# instead: same photos (Pexels License: free for commercial/personal use,
+# no attribution required) and same three Google Fonts (all OFL-licensed
+# open source, pulled from Google's own canonical google/fonts source
+# repo), shipped as local files under assets/ so the app has no runtime
+# dependency on either host.
+ASSETS_DIR = REPO_ROOT / "assets"
+PHOTOS_DIR = ASSETS_DIR / "photos"
+FONTS_DIR = ASSETS_DIR / "fonts"
+
 # AUDIT FIX 2026-09-09 (SB15, final audit): this dict and the separate
 # `{"well-supported": 90, "typical": 65, "limited evidence": 35}` fill-
 # percentage dict inside `render_confidence_ring()` used to be two
@@ -89,20 +105,91 @@ CONFIDENCE_DISPLAY = {
 _CONFIDENCE_DISPLAY_FALLBACK = {"color": "#94a3b8", "fill_pct": 50}  # neutral grey -- see render_confidence_ring
 
 # Header banner photos -- free-to-use stock photography (Pexels License: free
-# for commercial/personal use, no attribution required), hotlinked rather
-# than bundled so the app stays lightweight. Picked by hand from Pexels'
-# "house" / "modern house exterior" search results, checking each photo's
-# own description first so the banner only shows real house exteriors (not
-# interiors, dollhouses, or unrelated results that a plain keyword search
-# can turn up).
+# for commercial/personal use, no attribution required). Picked by hand from
+# Pexels' "house" / "modern house exterior" search results, checking each
+# photo's own description first so the banner only shows real house
+# exteriors (not interiors, dollhouses, or unrelated results that a plain
+# keyword search can turn up). Bundled locally as of Amendment 1 (see
+# ASSETS_DIR above) -- these are now local filenames under
+# assets/photos/, not remote URLs; `_header_photo_data_uris()` below reads
+# and base64-encodes them at runtime so `render_hero_header()` can keep
+# using a plain `src="..."` <img> tag unchanged.
 HEADER_PHOTOS = [
-    "https://images.pexels.com/photos/20296321/pexels-photo-20296321.jpeg",
-    "https://images.pexels.com/photos/11014232/pexels-photo-11014232.jpeg",
-    "https://images.pexels.com/photos/1438832/pexels-photo-1438832.jpeg",
-    "https://images.pexels.com/photos/3958954/pexels-photo-3958954.jpeg",
-    "https://images.pexels.com/photos/33213827/pexels-photo-33213827.jpeg",
-    "https://images.pexels.com/photos/20220498/pexels-photo-20220498.jpeg",
+    "header_1.jpg",
+    "header_2.jpg",
+    "header_3.jpg",
+    "header_4.jpg",
+    "header_5.jpg",
+    "header_6.jpg",
 ]
+
+
+@st.cache_resource(show_spinner=False)
+def _header_photo_data_uris(filenames: tuple[str, ...]) -> tuple[str, ...]:
+    """Reads the local header photo files once (per session process,
+    thanks to st.cache_resource -- Streamlit reruns this whole script on
+    every interaction, and re-reading + re-encoding 6 images from disk on
+    every rerun would be wasted work) and returns them as base64 data
+    URIs, so `render_hero_header()` can embed them directly into its
+    isolated iframe's HTML with a plain <img src="..."> -- the same
+    approach already used for the local fonts below, and necessary for
+    the same reason: components.html() renders into a sandboxed iframe
+    with no access to Streamlit's own static file serving."""
+    uris = []
+    for name in filenames:
+        data = (PHOTOS_DIR / name).read_bytes()
+        b64 = base64.b64encode(data).decode("ascii")
+        uris.append(f"data:image/jpeg;base64,{b64}")
+    return tuple(uris)
+
+
+# Local, subsetted (Basic Latin + the handful of extra punctuation marks
+# actually used: em/en dash, curly quotes, ellipsis, the gold "diamond"
+# bullet) replacements for the same three Google Fonts previously pulled
+# live from fonts.googleapis.com. Sourced from Google's own canonical
+# google/fonts repo (OFL-licensed, free for any use) and subset+recompressed
+# to .woff2 with fontTools -- ~192KB total across all 4 files, versus
+# ~1.9MB for the unsubsetted originals, keeping the same footprint the
+# live Google Fonts CDN would have served for this same character set.
+# Playfair Display and Inter ship as variable fonts upstream, so one
+# @font-face per style with a font-weight *range* covers every weight this
+# app uses (600/700 normal + 500 italic for Playfair Display; 400/500/600
+# for Inter) from a single file each -- simpler than one @font-face per
+# weight and functionally identical to what the Google Fonts CSS2 API
+# would have served for the same requested weights.
+_LOCAL_FONT_FACES = (
+    # (font-family, font-style, css "font-weight" value, filename)
+    ("Playfair Display", "normal", "100 900", "playfair-display-wght.woff2"),
+    ("Playfair Display", "italic", "100 900", "playfair-display-italic-wght.woff2"),
+    ("Inter", "normal", "100 900", "inter-opsz-wght.woff2"),
+    ("Great Vibes", "normal", "400", "great-vibes-regular.woff2"),
+)
+
+
+@st.cache_resource(show_spinner=False)
+def _local_font_faces_css(family_names: tuple[str, ...]) -> str:
+    """Builds @font-face CSS with base64-embedded local font files for the
+    given family names (a subset of _LOCAL_FONT_FACES), replacing what
+    used to be a live `@import url('https://fonts.googleapis.com/...')`.
+    Takes a subset rather than always returning all 4 families so each of
+    the 3 injection sites below only pays for the fonts it actually uses
+    (e.g. the price headline iframe only ever needed Playfair Display,
+    never Inter or Great Vibes) -- unchanged from each site's original,
+    already-scoped @import. Cached like _header_photo_data_uris() above,
+    for the same reason (avoid re-reading+re-encoding on every Streamlit
+    rerun)."""
+    rules = []
+    for family, style, weight, filename in _LOCAL_FONT_FACES:
+        if family not in family_names:
+            continue
+        data = (FONTS_DIR / filename).read_bytes()
+        b64 = base64.b64encode(data).decode("ascii")
+        rules.append(
+            f"@font-face {{ font-family: '{family}'; font-style: {style}; "
+            f"font-weight: {weight}; font-display: swap; "
+            f"src: url(data:font/woff2;base64,{b64}) format('woff2'); }}"
+        )
+    return "\n".join(rules)
 
 # Real, previously-measured model accuracy numbers (regression_output/
 # regression_report.md) -- one constant reused by both the hero header's
@@ -144,7 +231,7 @@ def inject_global_brand_css() -> None:
         _flatten_html_for_markdown(
             f"""
             <style>
-              @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Inter:wght@400;500;600&family=Great+Vibes&display=swap');
+              {_local_font_faces_css(("Playfair Display",))}
 
               h2, h3 {{
                 font-family: 'Playfair Display', Georgia, serif !important;
@@ -167,7 +254,7 @@ def inject_global_brand_css() -> None:
 
 
 def render_hero_header(
-    photos: list[str],
+    photos: list[str] | tuple[str, ...],
     brand: str,
     slogan: str,
     headline: str,
@@ -207,7 +294,7 @@ def render_hero_header(
 
     html = f"""
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Inter:wght@400;500;600&family=Great+Vibes&display=swap');
+      {_local_font_faces_css(("Playfair Display", "Inter", "Great Vibes"))}
 
       * {{ box-sizing: border-box; }}
       .hp-wrap {{
@@ -792,7 +879,7 @@ def render_report_price_headline(predicted_price: float) -> None:
     html = f"""
     <!doctype html><html><head><meta charset="utf-8">
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
+      {_local_font_faces_css(("Playfair Display",))}
       html, body {{ margin: 0; padding: 0; background: {BRAND['navy']}; }}
     </style>
     </head><body>
@@ -1095,7 +1182,7 @@ def run_interpretation(raw_house: dict) -> InterpretationResult:
 # --------------------------------------------------------------------------- #
 inject_global_brand_css()
 render_hero_header(
-    HEADER_PHOTOS,
+    _header_photo_data_uris(tuple(HEADER_PHOTOS)),
     # UI_AMENDMENTS.md entry 10: no more building-icon emoji next to the
     # name -- a larger two-font wordmark instead (script "G", serif
     # "-Homes"), styled by .hp-brand-g / .hp-brand-homes above.
@@ -1318,7 +1405,7 @@ else:
         zip_choice = st.selectbox("ZIP code", options=zip_options)
     final_city, final_statezip = city_choice, zip_choice
 
-submitted = st.button("Predict", type="primary", use_container_width=True)
+submitted = st.button("Value It", type="primary", use_container_width=True)
 
 
 # --------------------------------------------------------------------------- #
