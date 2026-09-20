@@ -1,0 +1,13 @@
+# G-Homes brand theme: navy background, gold accent -- set here (Streamlit's
+# native theming) rather than fought piecemeal with CSS overrides, so every
+# built-in widget (buttons, inputs, sliders, dataframes) picks up the brand
+# colors consistently. base="dark" gives Streamlit's own chrome (borders,
+# shadows, hover states) sensible defaults for a dark navy page; the custom
+# colors below then layer the actual G-Homes palette on top.
+[theme]
+base = "dark"
+primaryColor = "#D4AF37"
+backgroundColor = "#0A1930"
+secondaryBackgroundColor = "#132A4C"
+textColor = "#F2ECDC"
+font = "sans serif"
